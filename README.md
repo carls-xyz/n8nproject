@@ -18,22 +18,23 @@ Gmail connecté à N8N via OAuth2
 
 #Installation
 1. Importer le workflow
-Dans N8N : Add Workflow > Import from file > sélectionne workflows/EmailSummary_v3.json
-2. Ajouter tes credentials
+Dans N8N : Add Workflow > Import from file > sélectionne workflow/emailresume.json
 
+2. Ajouter tes credentials
 Gmail : connecte ton compte via OAuth2
 Telegram : entre le token de ton bot
 
 3. Remplacer les placeholders
-Dans le nœud CallGroqResume :
+#Dans le nœud CallGroqResume :
 
-Remplace REMPLACE_PAR_TA_CLE_GROQ par ta clé Groq
+- Remplace REMPLACE_PAR_TA_CLE_GROQ par ta clé Groq
 
 Dans les nœuds Telegram :
 
-Remplace TON_CHAT_ID par ton Chat ID (trouve-le via @userinfobot)
+- Remplace TON_CHAT_ID par ton Chat ID (trouve-le via @userinfobot)
 
 4. Activer le workflow
 Clique sur le toggle Active en haut à droite.
-Sécurité
-Ne commite jamais ta clé Groq dans le JSON — remplace-la par un placeholder avant de pusher.
+
+#Sécurité
+Ne commite jamais ta clé Groq dans le JSON, remplace-la par un placeholder avant de pusher.
