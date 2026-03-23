@@ -1,0 +1,296 @@
+{
+  "name": "EmailSummary_v3",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      },
+      "id": "67114e45-7d1d-475a-a249-329b3d76155c",
+      "name": "Declencheur10h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        3600,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "newer_than:1d"
+        }
+      },
+      "id": "da8a7a60-9ade-44b0-b28f-9a3b26ecba32",
+      "name": "LireLesMails",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        3824,
+        1776
+      ],
+      "webhookId": "ad112481-8ff6-41e2-b07d-da3cfbdd8b8f",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (!items || items.length === 0) {\n  return [{ json: { mailsText: 'Aucun mail recu.', count: 0, mailsJson: '[]' } }];\n}\n\nconst mails = items.map((item) => {\n  const mail = item.json;\n  const id = mail.id || mail.messageId || '';\n  const threadId = mail.threadId || '';\n  const from = (mail.headers && mail.headers.From) || mail.From || mail.from || 'Inconnu';\n  const subject = (mail.headers && mail.headers.Subject) || mail.Subject || mail.subject || '(Sans objet)';\n  const snippet = (mail.snippet || '').replace(/[\\u200c\\u00ad\\u200b\\ufeff]/g, '').replace(/&#39;/g, \"'\").trim().slice(0, 300);\n  return { id, threadId, from, subject, snippet };\n});\n\nconst mailsText = mails.map((m, i) =>\n  `${i + 1}. De: ${m.from}\\nObjet: ${m.subject}\\nApercu: ${m.snippet}`\n).join('\\n\\n---\\n\\n');\n\nreturn [{ json: { mailsText, count: mails.length, mailsJson: JSON.stringify(mails) } }];"
+      },
+      "id": "41a1b7d6-6768-41cd-a67b-0037dcba708f",
+      "name": "FormatterLesMails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4048,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.count}}",
+              "operation": "larger"
+            }
+          ]
+        }
+      },
+      "id": "347b6efe-c6ea-4271-87e1-7a79afaa79d1",
+      "name": "YatilDesMails",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        4272,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "7038965811",
+        "text": "☀️ Bonjour Charles ! Aucun mail reçu depuis hier. Ta boite est clean !",
+        "additionalFields": {}
+      },
+      "id": "c2e007ab-7c8a-424a-893c-370afb6b88c5",
+      "name": "TelegramVide",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        4496,
+        1936
+      ],
+      "webhookId": "0da64c6c-9fdc-479d-a9cb-27e20d125b69",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst body = JSON.stringify({\n  model: 'llama-3.3-70b-versatile',\n  max_tokens: 1024,\n  messages: [\n    {\n      role: 'system',\n      content: 'Tu es un assistant personnel de Charles. Tu analyses ses emails des dernieres 24h et tu rediges un resume en francais pour Telegram.\\n\\nRegles :\\n- Ignore newsletters, pubs et notifications automatiques\\n- Concentre-toi uniquement sur les mails importants\\n- Si tout est spam, dis-le avec humour\\n\\nFormat STRICT :\\n🌅 Bonjour Charles ! Voici ton recap mail du jour\\n\\n📬 X mails importants sur Y recus\\n\\n1️⃣ [Emoji] De : [Expediteur]\\n📌 Sujet : [Sujet]\\n✅ Action : [1 phrase max]\\n\\n2️⃣ ...'\n    },\n    {\n      role: 'user',\n      content: 'Voici les ' + data.count + ' emails recus :\\n\\n' + data.mailsText\n    }\n  ]\n});\n\nreturn [{ json: { body, mailsJson: data.mailsJson } }];"
+      },
+      "id": "80f5405b-1e9d-47d4-896b-1d0bcd005f46",
+      "name": "PrepareResume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4496,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer "
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{$json.body}}",
+        "options": {}
+      },
+      "id": "a6002f0b-3d02-4cd6-bcba-df665270b31d",
+      "name": "CallGroqResume",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4720,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet text = response?.choices?.[0]?.message?.content || 'Aucun resume genere.';\n\ntext = text\n  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')\n  .replace(/\\*\\*(.*?)\\*\\*/g, '<b>$1</b>').replace(/\\*(.*?)\\*/g, '<i>$1</i>')\n  .replace(/^#{1,3} (.+)$/gm, '<b>$1</b>').replace(/^[\\*\\-] /gm, '• ');\n\nconst mailsJson = $('PrepareResume').first().json.mailsJson;\nreturn [{ json: { summary: text, mailsJson } }];"
+      },
+      "id": "46496db6-c047-45bf-b199-18b0917307bf",
+      "name": "ExtraireResume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4944,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "",
+        "text": "={{$json.summary}}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "id": "40b6a2c8-2197-4909-a2e1-8543707e6509",
+      "name": "EnvoyerResumeTelegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        5168,
+        1664
+      ],
+      "webhookId": "1d145504-44b4-4737-a719-6662fffbb2c3",
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Declencheur10h": {
+      "main": [
+        [
+          {
+            "node": "LireLesMails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LireLesMails": {
+      "main": [
+        [
+          {
+            "node": "FormatterLesMails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FormatterLesMails": {
+      "main": [
+        [
+          {
+            "node": "YatilDesMails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YatilDesMails": {
+      "main": [
+        [
+          {
+            "node": "PrepareResume",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "TelegramVide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PrepareResume": {
+      "main": [
+        [
+          {
+            "node": "CallGroqResume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CallGroqResume": {
+      "main": [
+        [
+          {
+            "node": "ExtraireResume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ExtraireResume": {
+      "main": [
+        [
+          {
+            "node": "EnvoyerResumeTelegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "EnvoyerResumeTelegram": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Europe/Paris",
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "271be255-4f93-4f19-b390-e9e223d77143",
+  "meta": {
+    "templateId": "ready-to-run-ai-workflow-v5",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b78a9f97839e336bd35f310fcac40d83d85a490218a6663f5421e74cc30eba4"
+  },
+  "id": "deYSJyIINK9sHYeW",
+  "tags": []
+}
